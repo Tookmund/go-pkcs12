@@ -730,6 +730,10 @@ func makeSafeContents(rand io.Reader, bags []safeBag, password []byte) (ci conte
 		if _, err = rand.Read(randomSalt); err != nil {
 			return
 		}
+		iv := make([]byte, 16)
+		if _, err = rand.Read(iv); err != nil {
+			return
+		}
 
 		var algo, kdf, encScheme pkix.AlgorithmIdentifier
 		var kdfParams pbkdf2Params
@@ -743,9 +747,14 @@ func makeSafeContents(rand io.Reader, bags []safeBag, password []byte) (ci conte
 		kdfParams.KeyLength = 32
 		kdfParams.Prf.Algorithm = oidHmacWithSHA256
 
+		if kdf.Parameters.FullBytes, err = asn1.Marshal(kdfParams); err != nil {
+			err = fmt.Errorf("makesafecontents kdf params marshal: %s", err)
+		}
+
 
 		encScheme.Algorithm = oidAES256CBC
-		// IV probably configured by SetData?
+		// IV
+		encScheme.Parameters.Bytes = iv
 
 		if algo.Parameters.FullBytes, err = asn1.Marshal(pbes2Params{Kdf: kdf, EncryptionScheme: encScheme}); err != nil {
 			return
