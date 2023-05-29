@@ -27,6 +27,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -714,6 +715,7 @@ func makeCertBag(certBytes []byte, attributes []pkcs12Attribute) (certBag *safeB
 func makeSafeContents(rand io.Reader, bags []safeBag, password []byte) (ci contentInfo, err error) {
 	var data []byte
 	if data, err = asn1.Marshal(bags); err != nil {
+		err = fmt.Errorf("makesafecontents marshal bags: %s", err)
 		return
 	}
 
@@ -723,6 +725,7 @@ func makeSafeContents(rand io.Reader, bags []safeBag, password []byte) (ci conte
 		ci.Content.Tag = 0
 		ci.Content.IsCompound = true
 		if ci.Content.Bytes, err = asn1.Marshal(data); err != nil {
+			err = fmt.Errorf("makesafecontents marshal unencrypted data: %s", err)
 			return
 		}
 	} else {
@@ -757,6 +760,7 @@ func makeSafeContents(rand io.Reader, bags []safeBag, password []byte) (ci conte
 		encScheme.Parameters.Bytes = iv
 
 		if algo.Parameters.FullBytes, err = asn1.Marshal(pbes2Params{Kdf: kdf, EncryptionScheme: encScheme}); err != nil {
+			err = fmt.Errorf("makesafecontents pbes2 params marshal: %s", err)
 			return
 		}
 
@@ -765,6 +769,7 @@ func makeSafeContents(rand io.Reader, bags []safeBag, password []byte) (ci conte
 		encryptedData.EncryptedContentInfo.ContentType = oidDataContentType
 		encryptedData.EncryptedContentInfo.ContentEncryptionAlgorithm = algo
 		if err = pbEncrypt(&encryptedData.EncryptedContentInfo, data, password); err != nil {
+			err = fmt.Errorf("makesafecontents pbes2 encrypt: %s", err)
 			return
 		}
 
@@ -773,6 +778,7 @@ func makeSafeContents(rand io.Reader, bags []safeBag, password []byte) (ci conte
 		ci.Content.Tag = 0
 		ci.Content.IsCompound = true
 		if ci.Content.Bytes, err = asn1.Marshal(encryptedData); err != nil {
+			err = fmt.Errorf("makesafecontents pbes2 encrypt data marshal: %s", err)
 			return
 		}
 	}

@@ -6,6 +6,7 @@
 package pkcs12
 
 import (
+	"fmt"
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
@@ -184,7 +185,7 @@ type pbkdf2Params struct {
 func pbes2CipherFor(algorithm pkix.AlgorithmIdentifier, password []byte) (cipher.Block, []byte, error) {
 	var params pbes2Params
 	if err := unmarshal(algorithm.Parameters.FullBytes, &params); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("algo params: %s", err)
 	}
 
 	if !params.Kdf.Algorithm.Equal(oidPBKDF2) {
@@ -193,7 +194,7 @@ func pbes2CipherFor(algorithm pkix.AlgorithmIdentifier, password []byte) (cipher
 
 	var kdfParams pbkdf2Params
 	if err := unmarshal(params.Kdf.Parameters.FullBytes, &kdfParams); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("KDF params: %s", err)
 	}
 	if kdfParams.Salt.Tag != asn1.TagOctetString {
 		return nil, nil, errors.New("pkcs12: only octet string salts are supported for pbkdf2")
@@ -244,7 +245,7 @@ func pbEncrypterFor(algorithm pkix.AlgorithmIdentifier, password []byte) (cipher
 func pbEncrypt(info encryptable, decrypted []byte, password []byte) error {
 	cbc, blockSize, err := pbEncrypterFor(info.Algorithm(), password)
 	if err != nil {
-		return err
+		return fmt.Errorf("pbencrypterfor: %s", err)
 	}
 
 	psLen := blockSize - len(decrypted)%blockSize
