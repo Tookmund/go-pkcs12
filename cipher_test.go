@@ -1,13 +1,17 @@
 package pkcs12_test
 
 import (
+	"bytes"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/asn1"
 	"encoding/base64"
 	"fmt"
+	"github.com/Tookmund/go-pkcs12"
 	"log"
 	"os"
 	"testing"
-	"github.com/Tookmund/go-pkcs12"
+	"io/ioutil"
 )
 
 func Test_additionalOIDs(t *testing.T) {
@@ -143,5 +147,64 @@ cLXjHUOhDDyqBAhlzWP0LJxhZQICCAA=`
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+//	fmt.Println("Writing PBES2")
+//	newP12.KeyBagAlgorithm = pkcs12.OidPBES2
+//	out, err := pkcs12.Marshal(&newP12)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	err = os.WriteFile("pbes2.p12", out, 0644)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+}
+
+func unmarshal_pfx(filename string) (*pkcs12.P12, error) {
+	pfxFile, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer pfxFile.Close()
+	pfxBytes, err := ioutil.ReadAll(pfxFile)
+	if err != nil {
+		return nil, err
+	}
+	p12 := &pkcs12.P12{
+		HasPassword: true,
+		Password:    "test",
+	}
+	err = pkcs12.Unmarshal(pfxBytes, p12)
+	if err != nil {
+		return nil, err
+	}
+	return p12, nil
+}
+
+func Test_opensslv3(t *testing.T) {
+	newp12, err := unmarshal_pfx("test-128-rc2-cbc.p12.new")
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldp12, err := unmarshal_pfx("test-128-rc2-cbc.p12")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("Cert Algo: %v\nKey Algo: %v\nMAC Algo: %v\n", newp12.CertBagAlgorithm, newp12.KeyBagAlgorithm, newp12.MACAlgorithm)
+	for _, element := range newp12.KeyEntries {
+		fmt.Printf("%v\n", element)
+	}
+	oldKey := oldp12.KeyEntries[0].Key.(*rsa.PrivateKey)
+	oldKeyBytes, err := x509.MarshalPKCS8PrivateKey(oldKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newKey := newp12.KeyEntries[0].Key.(*rsa.PrivateKey)
+	newKeyBytes, err := x509.MarshalPKCS8PrivateKey(newKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(oldKeyBytes, newKeyBytes) {
+		t.Fatal("Different Keys!")
 	}
 }

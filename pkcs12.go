@@ -1025,6 +1025,26 @@ func Marshal(p12 *P12) (pfxData []byte, err error) {
 	return
 }
 
+
+// Encode produces pfxData containing one private key (privateKey), an
+// end-entity certificate (certificate), and any number of CA certificates
+// (caCerts).
+//
+// The private key is encrypted with the provided password, but due to the
+// weak encryption primitives used by PKCS#12, it is RECOMMENDED that you
+// specify a hard-coded password (such as [DefaultPassword]) and protect
+// the resulting pfxData using other means.
+//
+// The rand argument is used to provide entropy for the encryption, and
+// can be set to [crypto/rand.Reader].
+//
+// Encode emulates the behavior of OpenSSL v3's PKCS12_create: it creates two
+// SafeContents both using PBES2 with AES-256-CBC with key generation using
+// PBKDF2 and PRK HMAC with SHA256
+func EncodeOpensslV3(rand io.Reader, privateKey interface{}, certificate *x509.Certificate, caCerts []*x509.Certificate, password string) (pfxData []byte, err error) {
+}
+
+
 // EncodeTrustStore produces pfxData containing any number of CA certificates
 // (certs) to be trusted. The certificates will be marked with a special OID that
 // allow it to be used as a Java TrustStore in Java 1.8 and newer.
