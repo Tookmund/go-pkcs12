@@ -731,9 +731,23 @@ func makeSafeContents(rand io.Reader, bags []safeBag, password []byte) (ci conte
 			return
 		}
 
-		var algo pkix.AlgorithmIdentifier
-		algo.Algorithm = oidPBEWithSHAAnd40BitRC2CBC
-		if algo.Parameters.FullBytes, err = asn1.Marshal(pbeParams{Salt: randomSalt, Iterations: 2048}); err != nil {
+		var algo, kdf, encScheme pkix.AlgorithmIdentifier
+		var kdfParams pbkdf2Params
+
+		algo.Algorithm = oidPBES2
+
+		kdf.Algorithm = oidPBKDF2
+		kdfParams.Salt.Tag = asn1.TagOctetString
+		kdfParams.Salt.Bytes = randomSalt
+		kdfParams.Iterations = 2048
+		kdfParams.KeyLength = 32
+		kdfParams.Prf.Algorithm = oidHmacWithSHA256
+
+
+		encScheme.Algorithm = oidAES256CBC
+		// IV probably configured by SetData?
+
+		if algo.Parameters.FullBytes, err = asn1.Marshal(pbes2Params{Kdf: kdf, EncryptionScheme: encScheme}); err != nil {
 			return
 		}
 
